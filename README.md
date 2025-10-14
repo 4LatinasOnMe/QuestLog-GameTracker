@@ -53,13 +53,7 @@ Built with **Flutter** and powered by the **RAWG Video Games Database API**.
 - About section with app info
 - Powered by RAWG API attribution
 
----
 
-## 📱 Screenshots
-
-> Add your app screenshots here
-
----
 
 ## 🚀 Getting Started
 
@@ -382,9 +376,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📧 Contact
 
-Your Name - [@yourtwitter](https://twitter.com/yourtwitter)
+Your Name - [@tinypeanut21](https://twitter.com/tinypeanut21)
 
-Project Link: [https://github.com/yourusername/questlog](https://github.com/yourusername/questlog)
+Project Link: https://github.com/4LatinasOnMe/QuestLog-GameTracker
 
 ---
 
