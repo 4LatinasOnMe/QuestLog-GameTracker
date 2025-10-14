@@ -53,7 +53,19 @@ Built with **Flutter** and powered by the **RAWG Video Games Database API**.
 - About section with app info
 - Powered by RAWG API attribution
 
+---
 
+## 📱 Screenshots
+
+<p align="center">
+  <img src="screenshots/discovery.png" width="200" alt="Discovery Screen"/>
+  <img src="screenshots/search.png" width="200" alt="Search Screen"/>
+  <img src="screenshots/collection.png" width="200" alt="Collection Screen"/>
+  <img src="screenshots/details.png" width="200" alt="Game Details"/>
+  <img src="screenshots/statistics.png" width="200" alt="Statistics"/>
+</p>
+
+---
 
 ## 🚀 Getting Started
 
