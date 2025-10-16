@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/game_model.dart';
 import '../widgets/game_card.dart';
@@ -24,6 +25,7 @@ class _SearchScreenState extends State<SearchScreen> {
   String _sortBy = 'relevance'; // relevance, rating, name, released
   double _minRating = 0;
   bool _showFilters = false;
+  Timer? _debounceTimer;
 
   final List<String> _platforms = ['All', 'PC', 'PlayStation', 'Xbox', 'Nintendo Switch', 'Android', 'iOS'];
   final List<String> _genres = ['All', 'Action', 'Adventure', 'RPG', 'Strategy', 'Sports', 'Shooter', 'Puzzle', 'Indie'];
@@ -38,16 +40,30 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() => _isLoading = true);
     
     try {
-      final games = await _apiService.fetchGames(page: 1, pageSize: 40);
+      final games = await _apiService.fetchGames(
+        page: 1,
+        pageSize: 40,
+        ordering: '-rating', // Load highest rated games initially
+      );
       setState(() {
         _allGames = games;
         _displayedGames = games;
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading games: $e');
+      debugPrint('Error loading games: $e');
       setState(() => _isLoading = false);
     }
+  }
+
+  void _onSearchChanged(String query) {
+    // Cancel previous timer
+    _debounceTimer?.cancel();
+    
+    // Set new timer for debouncing
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      _performSearch(query);
+    });
   }
 
   Future<void> _performSearch(String query) async {
@@ -66,7 +82,7 @@ class _SearchScreenState extends State<SearchScreen> {
         _isSearching = false;
       });
     } catch (e) {
-      print('Search error: $e');
+      debugPrint('Search error: $e');
       setState(() {
         _displayedGames = [];
         _isSearching = false;
@@ -161,7 +177,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   // Search Bar
                   TextField(
                     controller: _searchController,
-                    onChanged: _performSearch,
+                    onChanged: _onSearchChanged,
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 16,
@@ -180,6 +196,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                 color: AppTheme.textTertiary,
                               ),
                               onPressed: () {
+                                _debounceTimer?.cancel();
                                 _searchController.clear();
                                 _performSearch('');
                               },
@@ -452,10 +469,10 @@ class _SearchScreenState extends State<SearchScreen> {
             // Search Results
             Expanded(
               child: _isLoading
-                  ? Center(
+                  ? const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           CircularProgressIndicator(
                             color: AppTheme.accentColor,
                           ),
@@ -611,6 +628,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }

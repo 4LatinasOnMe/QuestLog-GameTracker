@@ -50,7 +50,7 @@ class _CollectionScreenState extends State<CollectionScreen> with AutomaticKeepA
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading collection: $e');
+      debugPrint('Error loading collection: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -362,13 +362,6 @@ class _CollectionScreenState extends State<CollectionScreen> with AutomaticKeepA
                           itemBuilder: (context) => [
                             PopupMenuItem<GameStatus?>(
                               value: null,
-                              onTap: () {
-                                Future.delayed(Duration.zero, () {
-                                  setState(() {
-                                    _filterStatus = null;
-                                  });
-                                });
-                              },
                               child: Text(
                                 'All Games',
                                 style: TextStyle(
