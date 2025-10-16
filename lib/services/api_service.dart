@@ -80,14 +80,77 @@ class ApiService {
     }
   }
   
-  // Get game details
-  Future<GameModel> getGameDetails(int gameId) async {
+  // Get new releases (last 30 days)
+  Future<List<GameModel>> getNewReleases({int page = 1, int pageSize = 10}) async {
+    final now = DateTime.now();
+    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+    final dateRange = '${thirtyDaysAgo.year}-${thirtyDaysAgo.month.toString().padLeft(2, '0')}-${thirtyDaysAgo.day.toString().padLeft(2, '0')},${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    
+    return fetchGames(
+      page: page,
+      pageSize: pageSize,
+      dates: dateRange,
+      ordering: '-released',
+    );
+  }
+  
+  // Get popular games (by metacritic score)
+  Future<List<GameModel>> getPopularGames({int page = 1, int pageSize = 10}) async {
+    return fetchGames(
+      page: page,
+      pageSize: pageSize,
+      ordering: '-metacritic',
+    );
+  }
+  
+  // Get recommended games based on a list of game IDs
+  Future<List<GameModel>> getRecommendedGames(List<int> gameIds, {int page = 1, int pageSize = 10}) async {
+    if (gameIds.isEmpty) return [];
+    
+    // For simplicity, we'll get similar games to the first game in the list
+    // In a production app, you might want to implement a more sophisticated recommendation algorithm
+    final similarGames = await getSimilarGames(gameIds.first, page: page, pageSize: pageSize);
+    return similarGames;
+  }
+  
+  // Get similar games to a specific game
+  Future<List<GameModel>> getSimilarGames(int gameId, {int page = 1, int pageSize = 10}) async {
     final apiKey = AppConfig.apiKey;
     final baseUrl = AppConfig.apiBaseUrl;
     
-    final url = Uri.parse('$baseUrl/games/$gameId').replace(queryParameters: {
+    final url = Uri.parse('$baseUrl/games/$gameId/suggested').replace(queryParameters: {
       'key': apiKey,
+      'page': page.toString(),
+      'page_size': pageSize.toString(),
     });
+    
+    try {
+      final response = await http.get(url);
+      
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        final List<dynamic> results = jsonData['results'] ?? [];
+        return results.map((json) => GameModel.fromJson(json)).toList();
+      } else {
+        throw Exception('Failed to load similar games: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error fetching similar games: $e');
+    }
+  }
+  
+  // Get game details with optional parameters for additional data
+  Future<GameModel> getGameDetails(int gameId, {bool includeScreenshots = false, bool includeStores = false}) async {
+    final apiKey = AppConfig.apiKey;
+    final baseUrl = AppConfig.apiBaseUrl;
+    
+    final params = {
+      'key': apiKey,
+      if (includeScreenshots) 'additions': 'screenshots',
+      if (includeStores) 'stores': '1',
+    };
+    
+    final url = Uri.parse('$baseUrl/games/$gameId').replace(queryParameters: params);
     
     try {
       final response = await http.get(url);

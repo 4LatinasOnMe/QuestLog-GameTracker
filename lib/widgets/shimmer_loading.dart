@@ -68,6 +68,77 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
   }
 }
 
+class ShimmerGameCard extends StatelessWidget {
+  const ShimmerGameCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Image placeholder
+          const Expanded(
+            flex: 3,
+            child: ShimmerLoading(
+              width: double.infinity,
+              height: double.infinity,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+          ),
+          // Content
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Title
+                  const ShimmerLoading(
+                    width: double.infinity,
+                    height: 16,
+                    borderRadius: BorderRadius.all(Radius.circular(4)),
+                  ),
+                  const SizedBox(height: 4),
+                  // Subtitle
+                  const ShimmerLoading(
+                    width: 100,
+                    height: 12,
+                    borderRadius: BorderRadius.all(Radius.circular(4)),
+                  ),
+                  const Spacer(),
+                  // Button
+                  ShimmerLoading(
+                    width: double.infinity,
+                    height: 32,
+                    borderRadius: const BorderRadius.all(Radius.circular(8)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class GameCardSkeleton extends StatelessWidget {
   const GameCardSkeleton({super.key});
 

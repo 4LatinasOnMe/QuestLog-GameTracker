@@ -4,8 +4,8 @@ import '../widgets/game_card.dart';
 import '../widgets/shimmer_loading.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../services/collection_service.dart';
 import 'game_details_screen.dart';
-import 'main_navigation.dart';
 
 class DiscoveryScreen extends StatefulWidget {
   const DiscoveryScreen({super.key});
@@ -14,311 +14,368 @@ class DiscoveryScreen extends StatefulWidget {
   State<DiscoveryScreen> createState() => _DiscoveryScreenState();
 }
 
-class _DiscoveryScreenState extends State<DiscoveryScreen> {
+class _DiscoveryScreenState extends State<DiscoveryScreen>
+    with SingleTickerProviderStateMixin {
   final ApiService _apiService = ApiService();
+  late TabController _tabController;
   bool _isLoading = true;
+
+  // Game lists for each tab
   List<GameModel> _popularGames = [];
   List<GameModel> _newReleases = [];
-  String? _errorMessage;
+  List<GameModel> _recommendedGames = [];
+
+  // Track loading and error states
+  final Map<int, bool> _tabLoadingStates = {
+    0: true, // Recommended
+    1: true, // New Releases
+    2: true, // Popular
+  };
+
+  final Map<int, String?> _tabErrorStates = {
+    0: null,
+    1: null,
+    2: null,
+  };
 
   @override
   void initState() {
     super.initState();
-    _loadGames();
+    _tabController = TabController(length: 3, vsync: this);
+    _loadAllTabs();
   }
 
-  Future<void> _loadGames() async {
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadAllTabs() async {
+    await Future.wait([
+      _loadRecommendedGames(),
+      _loadNewReleases(),
+      _loadPopularGames(),
+    ]);
+  }
+
+  Future<void> _loadRecommendedGames() async {
+    if (!mounted) return;
+
     setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+      _tabLoadingStates[0] = true;
+      _tabErrorStates[0] = null;
     });
-    
+
     try {
-      // Fetch games in parallel for better performance
-      final results = await Future.wait([
-        _apiService.fetchGames(
-          page: 1,
-          pageSize: 10,
-          ordering: '-rating', // Popular games by rating
-        ),
-        _apiService.fetchGames(
-          page: 1,
-          pageSize: 10,
-          dates: '${DateTime.now().year - 1}-01-01,${DateTime.now().year}-12-31', // Last year's releases
-          ordering: '-released',
-        ),
-      ]);
-      
-      setState(() {
-        _popularGames = results[0];
-        _newReleases = results[1];
-        _isLoading = false;
-      });
+      final collectionService = CollectionService();
+      await collectionService.init();
+      final userCollection = collectionService.getAllGames();
+
+      if (userCollection.isNotEmpty) {
+        final gameIds = userCollection.map((game) => game.id).toList();
+        debugPrint('Loading recommendations based on ${gameIds.length} games in collection');
+        
+        try {
+          final recommended = await _apiService.getRecommendedGames(gameIds);
+          
+          if (mounted) {
+            setState(() {
+              _recommendedGames = recommended;
+            });
+          }
+        } catch (e) {
+          // If recommendation API fails, fall back to popular games
+          debugPrint('Recommendation API failed, falling back to popular games: $e');
+          final fallback = await _apiService.getPopularGames(pageSize: 10);
+          
+          if (mounted) {
+            setState(() {
+              _recommendedGames = fallback;
+            });
+          }
+        }
+      } else {
+        // If collection is empty, show popular games as recommendations
+        debugPrint('Collection is empty, showing popular games as recommendations');
+        final fallback = await _apiService.getPopularGames(pageSize: 10);
+        
+        if (mounted) {
+          setState(() {
+            _recommendedGames = fallback;
+          });
+        }
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Unable to load games. Please check your connection and try again.';
-      });
-      debugPrint('Error loading games: $e');
+      if (mounted) {
+        setState(() {
+          _tabErrorStates[0] = 'Failed to load recommendations. Please try again.';
+        });
+      }
+      debugPrint('Error loading recommended games: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _tabLoadingStates[0] = false;
+          _updateGlobalLoadingState();
+        });
+      }
     }
+  }
+
+  Future<void> _loadNewReleases() async {
+    if (!mounted) return;
+
+    setState(() {
+      _tabLoadingStates[1] = true;
+      _tabErrorStates[1] = null;
+    });
+
+    try {
+      final newReleases = await _apiService.getNewReleases();
+
+      if (mounted) {
+        setState(() {
+          _newReleases = newReleases;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _tabErrorStates[1] = 'Failed to load new releases. Please try again.';
+        });
+      }
+      debugPrint('Error loading new releases: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _tabLoadingStates[1] = false;
+          _updateGlobalLoadingState();
+        });
+      }
+    }
+  }
+
+  Future<void> _loadPopularGames() async {
+    if (!mounted) return;
+
+    setState(() {
+      _tabLoadingStates[2] = true;
+      _tabErrorStates[2] = null;
+    });
+
+    try {
+      final popularGames = await _apiService.getPopularGames();
+
+      if (mounted) {
+        setState(() {
+          _popularGames = popularGames;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _tabErrorStates[2] = 'Failed to load popular games. Please try again.';
+        });
+      }
+      debugPrint('Error loading popular games: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _tabLoadingStates[2] = false;
+          _updateGlobalLoadingState();
+        });
+      }
+    }
+  }
+
+  void _updateGlobalLoadingState() {
+    setState(() {
+      _isLoading = _tabLoadingStates.values.any((isLoading) => isLoading);
+    });
+  }
+
+  Widget _buildTabContent(int index) {
+    if (_tabErrorStates[index] != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                _tabErrorStates[index]!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  switch (index) {
+                    case 0: _loadRecommendedGames(); break;
+                    case 1: _loadNewReleases(); break;
+                    case 2: _loadPopularGames(); break;
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentColor,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_tabLoadingStates[index] == true) {
+      return _buildLoadingGrid();
+    }
+
+    List<GameModel> gamesToShow;
+    String emptyMessage;
+
+    switch (index) {
+      case 0: // Recommended
+        gamesToShow = _recommendedGames;
+        emptyMessage = 'No recommendations available. Add some games to your collection first!';
+        break;
+      case 1: // New Releases
+        gamesToShow = _newReleases;
+        emptyMessage = 'No new releases found.';
+        break;
+      case 2: // Popular
+        gamesToShow = _popularGames;
+        emptyMessage = 'Unable to load popular games.';
+        break;
+      default:
+        gamesToShow = [];
+        emptyMessage = 'No data available.';
+    }
+
+    if (gamesToShow.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            emptyMessage,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ),
+      );
+    }
+
+    return _buildGamesGrid(gamesToShow);
+  }
+
+  Widget _buildLoadingGrid() {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.7,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: 6,
+      itemBuilder: (context, index) => const ShimmerGameCard(),
+    );
+  }
+
+  Widget _buildGamesGrid(List<GameModel> games) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.7,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: games.length,
+      itemBuilder: (context, index) {
+        final game = games[index];
+        return GameCard(
+          game: game,
+          onTap: () => _navigateToGameDetails(game),
+        );
+      },
+    );
+  }
+
+  void _navigateToGameDetails(GameModel game) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GameDetailsScreen(game: game),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _loadGames,
-          color: AppTheme.accentColor,
-          backgroundColor: AppTheme.surfaceDark,
-          child: _errorMessage != null
-              ? _buildErrorState()
-              : CustomScrollView(
-                  slivers: [
-            // App Bar
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Discover',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Find your next adventure',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 16,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            SliverAppBar(
+              expandedHeight: 120.0,
+              pinned: true,
+              backgroundColor: AppTheme.backgroundDark,
+              flexibleSpace: FlexibleSpaceBar(
+                titlePadding: const EdgeInsets.only(left: 16, bottom: 56),
+                title: const Text(
+                  'Discover',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                centerTitle: false,
+              ),
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(48),
+                child: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  labelColor: AppTheme.accentColor,
+                  unselectedLabelColor: Colors.white54,
+                  indicatorColor: AppTheme.accentColor,
+                  indicatorWeight: 3.0,
+                  tabs: const [
+                    Tab(text: 'Recommended'),
+                    Tab(text: 'New Releases'),
+                    Tab(text: 'Popular'),
                   ],
+                  onTap: (index) {
+                    if (_tabLoadingStates[index] == null) {
+                      switch (index) {
+                        case 0: _loadRecommendedGames(); break;
+                        case 1: _loadNewReleases(); break;
+                        case 2: _loadPopularGames(); break;
+                      }
+                    }
+                  },
                 ),
               ),
             ),
-            
-            // Popular Games Section
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Popular',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    Semantics(
-                      label: 'See all popular games',
-                      button: true,
-                      child: TextButton(
-                        onPressed: () {
-                          // Navigate to Search tab
-                          MainNavigation.of(context)?.switchTab(1);
-                        },
-                        child: const Text(
-                          'See All',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.accentColor,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            // Popular Games Grid
-            _buildGameGrid(_popularGames, 'popular'),
-            
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
-            
-            // New Releases Section
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'New Releases',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    Semantics(
-                      label: 'See all new releases',
-                      button: true,
-                      child: TextButton(
-                        onPressed: () {
-                          // Navigate to Search tab
-                          MainNavigation.of(context)?.switchTab(1);
-                        },
-                        child: const Text(
-                          'See All',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.accentColor,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            // New Releases Grid
-            _buildGameGrid(_newReleases, 'new releases'),
-            
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          ];
+        },
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildTabContent(0), // Recommended
+            _buildTabContent(1), // New Releases
+            _buildTabContent(2), // Popular
           ],
         ),
-        ),
       ),
-    );
-  }
-
-  Widget _buildGameGrid(List<GameModel> games, String sectionName) {
-    if (_isLoading) {
-      return SliverPadding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        sliver: SliverGrid(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.7,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-          ),
-          delegate: SliverChildBuilderDelegate(
-            (context, index) => const GameCardSkeleton(),
-            childCount: 6,
-          ),
-        ),
-      );
-    }
-    
-    if (games.isEmpty) {
-      return SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Center(
-            child: Text(
-              'No $sectionName found',
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 14,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-    
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      sliver: SliverGrid(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.7,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-        ),
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final game = games[index];
-            return Semantics(
-              label: 'Game: ${game.name}',
-              button: true,
-              child: GameCard(
-                game: game,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => GameDetailsScreen(game: game),
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-          childCount: games.length,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorState() {
-    return CustomScrollView(
-      slivers: [
-        SliverFillRemaining(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(40),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 80,
-                    color: AppTheme.error.withOpacity(0.5),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Failed to Load Games',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _errorMessage ?? 'An unexpected error occurred',
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 14,
-                      color: AppTheme.textSecondary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
-                  ElevatedButton(
-                    onPressed: _loadGames,
-                    child: const Text('Try Again'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
