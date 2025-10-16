@@ -34,21 +34,32 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     });
     
     try {
-      // Fetch real games from RAWG API
-      final popularGames = await _apiService.fetchGames(page: 1, pageSize: 10);
-      final newGames = await _apiService.fetchGames(page: 2, pageSize: 10);
+      // Fetch games in parallel for better performance
+      final results = await Future.wait([
+        _apiService.fetchGames(
+          page: 1,
+          pageSize: 10,
+          ordering: '-rating', // Popular games by rating
+        ),
+        _apiService.fetchGames(
+          page: 1,
+          pageSize: 10,
+          dates: '${DateTime.now().year - 1}-01-01,${DateTime.now().year}-12-31', // Last year's releases
+          ordering: '-released',
+        ),
+      ]);
       
       setState(() {
-        _popularGames = popularGames;
-        _newReleases = newGames;
+        _popularGames = results[0];
+        _newReleases = results[1];
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = e.toString();
+        _errorMessage = 'Unable to load games. Please check your connection and try again.';
       });
-      print('Error loading games: $e');
+      debugPrint('Error loading games: $e');
     }
   }
 
@@ -111,18 +122,22 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                         color: AppTheme.textPrimary,
                       ),
                     ),
-                    TextButton(
-                      onPressed: () {
-                        // Navigate to Search tab
-                        MainNavigation.of(context)?.switchTab(1);
-                      },
-                      child: const Text(
-                        'See All',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.accentColor,
+                    Semantics(
+                      label: 'See all popular games',
+                      button: true,
+                      child: TextButton(
+                        onPressed: () {
+                          // Navigate to Search tab
+                          MainNavigation.of(context)?.switchTab(1);
+                        },
+                        child: const Text(
+                          'See All',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.accentColor,
+                          ),
                         ),
                       ),
                     ),
@@ -132,50 +147,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
             ),
             
             // Popular Games Grid
-            _isLoading
-                ? SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    sliver: SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.7,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => const GameCardSkeleton(),
-                        childCount: 6,
-                      ),
-                    ),
-                  )
-                : SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    sliver: SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.7,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final game = _popularGames[index];
-                          return GameCard(
-                            game: game,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => GameDetailsScreen(game: game),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                        childCount: _popularGames.length,
-                      ),
-                    ),
-                  ),
+            _buildGameGrid(_popularGames, 'popular'),
             
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
             
@@ -195,18 +167,22 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                         color: AppTheme.textPrimary,
                       ),
                     ),
-                    TextButton(
-                      onPressed: () {
-                        // Navigate to Search tab
-                        MainNavigation.of(context)?.switchTab(1);
-                      },
-                      child: const Text(
-                        'See All',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.accentColor,
+                    Semantics(
+                      label: 'See all new releases',
+                      button: true,
+                      child: TextButton(
+                        onPressed: () {
+                          // Navigate to Search tab
+                          MainNavigation.of(context)?.switchTab(1);
+                        },
+                        child: const Text(
+                          'See All',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.accentColor,
+                          ),
                         ),
                       ),
                     ),
@@ -216,54 +192,82 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
             ),
             
             // New Releases Grid
-            _isLoading
-                ? SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    sliver: SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.7,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => const GameCardSkeleton(),
-                        childCount: 6,
-                      ),
-                    ),
-                  )
-                : SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    sliver: SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.7,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final game = _newReleases[index];
-                          return GameCard(
-                            game: game,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => GameDetailsScreen(game: game),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                        childCount: _newReleases.length,
-                      ),
-                    ),
-                  ),
+            _buildGameGrid(_newReleases, 'new releases'),
             
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGameGrid(List<GameModel> games, String sectionName) {
+    if (_isLoading) {
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        sliver: SliverGrid(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.7,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => const GameCardSkeleton(),
+            childCount: 6,
+          ),
+        ),
+      );
+    }
+    
+    if (games.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Center(
+            child: Text(
+              'No $sectionName found',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.7,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final game = games[index];
+            return Semantics(
+              label: 'Game: ${game.name}',
+              button: true,
+              child: GameCard(
+                game: game,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => GameDetailsScreen(game: game),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+          childCount: games.length,
         ),
       ),
     );
@@ -296,7 +300,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    _errorMessage ?? 'Unknown error occurred',
+                    _errorMessage ?? 'An unexpected error occurred',
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 14,

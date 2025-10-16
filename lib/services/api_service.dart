@@ -5,7 +5,12 @@ import '../models/game_model.dart';
 
 class ApiService {
   // Fetch games from RAWG.io API
-  Future<List<GameModel>> fetchGames({int page = 1, int pageSize = 20}) async {
+  Future<List<GameModel>> fetchGames({
+    int page = 1,
+    int pageSize = 20,
+    String? ordering,
+    String? dates,
+  }) async {
     final apiKey = AppConfig.apiKey;
     final baseUrl = AppConfig.apiBaseUrl;
     
@@ -13,11 +18,16 @@ class ApiService {
     print('🌐 Base URL: $baseUrl');
     
     // RAWG API uses 'key' parameter in URL
-    final url = Uri.parse('$baseUrl/games').replace(queryParameters: {
+    final queryParams = {
       'key': apiKey,
       'page': page.toString(),
       'page_size': pageSize.toString(),
-    });
+    };
+    
+    if (ordering != null) queryParams['ordering'] = ordering;
+    if (dates != null) queryParams['dates'] = dates;
+    
+    final url = Uri.parse('$baseUrl/games').replace(queryParameters: queryParams);
     
     print('📡 Full URL: $url');
     
