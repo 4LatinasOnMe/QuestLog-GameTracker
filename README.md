@@ -451,7 +451,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
  Name - [@tinypeanut21](https://twitter.com/tinypeanut21)
 
-Project Link: https://github.com/4LatinasOnMe/QuestLog-GameTracker
+Project Link: https://github.com/geogory-dev/QuestLog-GameTracker
 
 ---
 
