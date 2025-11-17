@@ -128,7 +128,29 @@ I'm sharing this because I want other developers to see that you can build somet
 
 ---
 
-## 🚀 Getting Started
+## 📱 Download & Install
+
+### **Direct APK Download**
+
+Want to try QuestLog right now? Download the latest release APK:
+
+🔗 [**Download QuestLog v1.0.0 APK**](https://github.com/4LatinasOnMe/QuestLog-GameTracker/releases/tag/v1.0.0)
+
+**Installation Steps:**
+1. Download the APK from the link above
+2. Enable "Install from unknown sources" in your Android settings
+3. Open the downloaded APK file
+4. Follow the installation prompts
+5. Launch QuestLog and start tracking your games!
+
+**Requirements:**
+- Android 5.0 (API level 21) or higher
+- ~50MB of free storage space
+- Internet connection for game data
+
+---
+
+## 🚀 Getting Started (For Developers)
 
 ### Prerequisites
 
