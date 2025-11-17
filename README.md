@@ -57,15 +57,34 @@ Built with **Flutter** and powered by the **RAWG Video Games Database API**.
 
 ## 📱 Screenshots
 
-<p align="center">
-  <img src="screenshots/discovery.png" width="200" alt="Discovery Screen"/>
-  <img src="screenshots/search.png" width="200" alt="Search Screen"/>
-  <img src="screenshots/collection.png" width="200" alt="Collection Screen"/>
-  <img src="screenshots/details.png" width="200" alt="Game Details"/>
-  <img src="screenshots/statistics.png" width="200" alt="Statistics"/>
-</p>
+<div align="center">
+
+### **🌟 Main Page - Your Gaming Hub**
+<img src="screenshots/MainPage.png" width="250" alt="Main Page"/>
+
+### **🔍 Smart Search & Filters**
+<img src="screenshots/Search.png" width="250" alt="Search Screen"/>
+
+### **📚 Personal Game Collection**
+<img src="screenshots/Collection.png" width="250" alt="Collection Screen"/>
+
+### **🎮 New Releases - Latest Games**
+<img src="screenshots/New Release.png" width="250" alt="New Releases"/>
+
+### **📊 Gaming Statistics Dashboard**
+<img src="screenshots/Statistics.png" width="250" alt="Statistics"/>
+
+### **💛 Wishlist Management**
+<img src="screenshots/WishList.png" width="250" alt="Wishlist"/>
+
+### **⚙️ Settings & Configuration**
+<img src="screenshots/Settings.png" width="250" alt="Settings"/>
+
+</div>
 
 ---
+
+*🎮 **QuestLog** - Your personal gaming companion, beautifully designed for the ultimate game tracking experience!*
 
 ## 🚀 Getting Started
 
